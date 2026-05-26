@@ -26,6 +26,7 @@ import re
 import argparse
 import subprocess
 import shutil
+import tempfile
 import urllib.request
 
 # 公共工具
@@ -198,7 +199,7 @@ def build_observe_prompt(frame_count: int, duration: float, interval: float,
 |------|------|------|
 | frame | string | 文件名（如 frame_001.jpg） |
 | objects | string[] | 画面中出现的关键对象、人物、UI 元素（这是实体的唯一来源，必须先完成识别） |
-| desc | string | 100字左右的中文段落，用六要素（Who/What/When/Where/Why/How）描述画面核心内容。⚠️ **desc 中的 Who 必须使用 objects 字段中识别出的实体名称，不得凭空编造。** |
+| desc | string | ~100 字描述段落，用六要素（Who/What/When/Where/Why/How）描述画面核心内容。使用视频内容的主要语言输出（中文视频用中文，英文视频用英文，以此类推）。⚠️ **desc 中的 Who 必须使用 objects 字段中识别出的实体名称，不得凭空编造。** |
 | texts | string | 画面中可读的所有明显文字，用逗号分隔。无文字则为空字符串 |
 | actions | string[] | 画面中正在发生的动作或事件（如：展示信息、切换画面、标注步骤） |
 | style | string | 画面风格标签（科技感/教程/日常/娱乐/卡通/纪录片等） |
@@ -364,6 +365,8 @@ def main():
     # Step 2: 视觉观测
     print("=== Visual: Observing frames ===")
     has_api = args.vision_llm_key and args.vision_llm_base and args.vision_llm_model
+    if has_api:
+        print("⚠️  PRIVACY: Vision frames will be sent to external LLM endpoint:", args.vision_llm_base)
     final_output = os.path.join(args.output_dir, "observations_visual.json")
 
     if is_long:

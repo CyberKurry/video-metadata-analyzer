@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-common.py — video-analyzer 公共工具函数
+common.py — video-metadata-analyzer shared utilities
 """
 
 import json

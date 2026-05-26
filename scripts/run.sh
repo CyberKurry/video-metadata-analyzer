@@ -8,34 +8,16 @@
 # 用法:
 #   bash run.sh --video <video> --output <dir> [options]
 #
-# 转写选项:
-#   --transcribe skip|local|cloud|agent-direct|audio-llm  (default: skip)
-#   --whisper-model MODEL          本地 Whisper 模型 (default: base)
-#   --whisper-api-key KEY          云端 Whisper API key
-#   --whisper-api-base URL         云端 Whisper API base URL
-#
-# 视觉分析:
-#   --max-frames N                 每段最大帧数 (default: 15)
-#   --keep-frames                  保留帧图片
-#   --vision-llm-key KEY           视觉 LLM API key (不传则 preprocess-only)
-#   --vision-llm-base URL          视觉 LLM API base URL
-#   --vision-llm-model MODEL       视觉 LLM 模型（需支持 image input）
-#
-# 音频 LLM 转写:
-#   --audio-llm-key KEY            音频 LLM API key
-#   --audio-llm-base URL           音频 LLM API base URL
-#   --audio-llm-model MODEL        音频 LLM 模型 (需支持 audio input)
-#
-# 合成:
-#   --synthesize-method api|agent|manual  合成方式 (不传则只做观测)
-#   --analyze-llm-key KEY           合成 LLM API key (api 模式必传)
-#   --analyze-llm-base URL          合成 LLM API base URL
-#   --analyze-llm-model MODEL       合成 LLM 模型
-#
-# 强依赖: 视觉分析需模型支持 image input; 音频转写需模型支持 audio input (或 Whisper)。
-# 使用前需向用户确认是使用外部 API 还是 Agent 自身能力。
 
 set -euo pipefail
+
+# Default timeout: 1 hour (covers frame extraction + LLM analysis for long videos)
+# Override via environment: VA_TIMEOUT=3600
+: "${VA_TIMEOUT:=3600}"
+if [[ -z "${_VA_TIMEOUT_SET:-}" ]]; then
+  export _VA_TIMEOUT_SET=1
+  exec timeout "$VA_TIMEOUT" "$0" "$@"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -58,6 +40,7 @@ AUDIO_LLM_MODEL=""
 ANALYZE_LLM_KEY=""
 ANALYZE_LLM_BASE=""
 ANALYZE_LLM_MODEL=""
+SYNTHESIZE_METHOD=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -120,6 +103,14 @@ if [ ! -f "$VIDEO" ]; then
 fi
 
 mkdir -p "$OUTPUT"
+
+# Privacy warning for API modes
+if [ -n "$VISION_LLM_KEY" ] || [ -n "$AUDIO_LLM_KEY" ] || [ "$TRANSCRIBE_MODE" = "cloud" ] || [ "$TRANSCRIBE_MODE" = "audio-llm" ] || [ "$SYNTHESIZE_METHOD" = "api" ]; then
+  echo "⚠️  PRIVACY: API mode active — video frames and/or audio will be sent to external LLM endpoints."
+  echo "   Ensure you trust the endpoint and understand the provider's data retention policy."
+  echo "   Use agent-direct or local modes for confidential media."
+  echo ""
+fi
 
 echo "=== Video Analyzer ==="
 echo "Video: $VIDEO"

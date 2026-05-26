@@ -1,10 +1,11 @@
 ---
-name: video-analyzer
-description: "Video content analysis pipeline — extract frames, transcribe audio, run LLM visual+audio analysis, synthesize structured Bilibili publish metadata (title, intro, tags, category, cover suggestion). Use when user says 'analyze video', '视频分析', '生成投稿元数据', or wants structured content analysis from a video file."
-version: 1.0.0
+name: video-metadata-analyzer
+description: "Video content analysis pipeline — extract frames, transcribe audio, run LLM visual+audio analysis, synthesize structured Bilibili publish metadata (title, intro, tags, category, cover suggestion). Use when user says '生成投稿元数据', '视频元数据分析', or explicitly requests this skill. ⚠️ API modes send video frames and audio to external LLM providers — see Privacy section."
+privacy_notice: "API modes (vision-llm, audio-llm, cloud, api) transmit extracted video frames, audio, transcripts, and derived metadata to user-configured external endpoints. Videos may contain faces, voices, on-screen text, documents, or other sensitive data. Users should verify endpoint trust and data retention policies before processing. Use agent-direct or local modes for confidential media."
+version: 1.2.0
 author: CyberKurry
 license: MIT
-homepage: https://github.com/CyberKurry/video-analyzer
+homepage: https://github.com/CyberKurry/video-metadata-analyzer
 compatibility: "Requires ffmpeg, ffprobe, Python 3.8+. Optional: Pillow (frame compression), openai-whisper (local mode). External LLM API (OpenAI-compatible chat completions) for full analysis."
 platforms: [macos, linux]
 metadata:
@@ -23,10 +24,12 @@ Three-stage video analysis pipeline: parallel visual + audio observation, then m
 
 ## When to Use
 
-- User says "analyze this video", "视频分析", "提取视频信息", "生成投稿元数据"
-- User wants structured content analysis from a video file
+- User says "生成投稿元数据", "视频元数据分析", "analyze video metadata"
+- User explicitly requests this skill for structured content analysis from a video file
 - User wants to prepare a video for Bilibili publishing (title, intro, tags, category, cover)
 - Upstream of `bilibili-publish-playwright`: this skill generates the metadata that feeds into Bilibili publishing
+
+> ⚠️ **Privacy Notice:** API modes (`audio-llm`, `cloud`, `vision-llm`, `api`) transmit video frames, audio, transcripts, and derived metadata to user-configured external LLM endpoints. Videos often contain faces, voices, on-screen text, or other sensitive data. Before using API modes, verify the endpoint trust, provider data retention policy, and your approval to process the media. Use `agent-direct` or `local` modes for confidential or regulated content.
 
 ## Architecture
 
@@ -112,7 +115,7 @@ All `*-key`, `*-base`, `*-model` parameters follow the pattern: `--vision-llm-ke
 
 **`observations_audio.json`** — `transcript`, `speakers`, `key_points`, `tone`. Agent-direct mode includes `audio_file` path.
 
-**`metadata.json`** — `title` (≤80 chars), `intro` (≤2000 chars), `tags` (≤10), `category`, `sub_category`, `cover_suggestion` (primary + reason + secondary), `declaration`, `copyright_claim`.
+**`metadata.json`** — `title` (≤80 chars), `intro` (≤2000 chars), `tags` (≤10), `category` (B站 type2 平铺分区，30 个一级分区), `cover_suggestion` (primary + reason + secondary), `declaration` (6 选 1), `copyright_claim`, `watermark`, `author_marks`.
 
 ## Pitfalls
 
@@ -122,6 +125,7 @@ All `*-key`, `*-base`, `*-model` parameters follow the pattern: `--vision-llm-ke
 - **Long videos = parallel API calls**: 30-min video = 8 segments × 15 frames = 8 vision API calls (capped at 4 concurrent). Consider rate limits.
 - **Missing credentials auto-degrade**: Omitting LLM keys → preprocess-only or agent-direct mode. Scripts never crash on missing keys.
 - **`--interval` deprecated**: Ignored. Interval auto-calculated per segment based on `--max-frames`.
+- **Timeout protection**: `run.sh` auto-wraps with `timeout $VA_TIMEOUT` (default 3600s = 1h). Override via `VA_TIMEOUT` env var.
 
 ## Error Handling
 

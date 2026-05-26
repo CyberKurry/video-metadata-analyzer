@@ -1,7 +1,9 @@
-# Video Analyzer — Full Technical Reference
+# Video Metadata Analyzer — Full Technical Reference
 
 > Complete parameter reference, output schemas, standalone usage, and error handling details.
 > This file is loaded on demand when the agent needs deep technical details.
+
+> ⚠️ **Privacy:** Modes marked 🌐 send data to external endpoints. See [SKILL.md Privacy Notice](../SKILL.md) for details.
 
 ## Complete Parameter Reference
 
@@ -13,7 +15,7 @@
 | `--output DIR` | **Yes** | — | Output directory (auto-created) |
 | `--max-frames N` | No | `15` | Max frames per 4-minute segment |
 | `--keep-frames` | No | `false` | Keep frame images (auto-cleaned by default) |
-| `--transcribe MODE` | No | `agent-direct` | Audio mode: `local` / `cloud` / `agent-direct` / `audio-llm` |
+| `--transcribe MODE` | No | `agent-direct` | Audio mode: `local` / `cloud` 🌐 / `agent-direct` / `audio-llm` 🌐 |
 | `--whisper-model MODEL` | No | `base` | Local Whisper model size (tiny/base/small/medium/large) |
 | `--whisper-api-key KEY` | No | — | Cloud Whisper API key (`--transcribe cloud`) |
 | `--whisper-api-base URL` | No | — | Cloud Whisper API base URL (`--transcribe cloud`) |
@@ -30,6 +32,16 @@
 | `--analyze-llm-model MODEL` | No | — | Synthesize LLM model name |
 
 **Note:** `--interval` is deprecated and ignored. Interval is auto-calculated per segment.
+
+### Timeout Protection
+
+`run.sh` wraps itself with `exec timeout $VA_TIMEOUT` on first invocation (default 3600s = 1 hour). Override via environment:
+
+```bash
+VA_TIMEOUT=7200 bash scripts/run.sh --video input.mp4 --output /tmp/out ...
+```
+
+The timeout covers the entire pipeline (frame extraction + LLM analysis + synthesis).
 
 ### Fallback / Degradation
 
@@ -195,7 +207,7 @@ python3 scripts/transcribe.py --video input.mp4 --output obs.json \
 
 | Method | How it works | Output |
 |--------|-------------|--------|
-| `api` | Calls external LLM via `--api-key/base/model`. 3× JSON parse retry. Falls back to heuristic `synthesize_agent()` on total failure | `metadata.json` (JSON) |
+| `api` 🌐 | Calls external LLM via `--api-key/base/model`. 3× JSON parse retry. Falls back to heuristic `synthesize_agent()` on total failure | `metadata.json` (JSON) |
 | `agent` | Writes system prompt + observations as Markdown. Agent reads it and generates metadata itself | `metadata.json` (Markdown prompt; Agent writes actual JSON) |
 | `manual` | Converts observations to human-readable Markdown | `metadata.json` (Markdown) |
 
@@ -325,15 +337,16 @@ For `agent-direct` mode, includes `audio_file` path:
   "title": "80字以内，像 UP 主写的标题",
   "intro": "2000字以内，给观众看的视频介绍",
   "tags": ["标签1", "标签2"],
-  "category": "B站一级分区",
-  "sub_category": "B站二级分区",
+  "category": "B站一级分区（2026-05 type2 平铺，共30个）",
   "cover_suggestion": {
     "primary": "frame_001.jpg",
     "reason": "为什么这帧适合做封面",
     "secondary": "frame_010.jpg"
   },
   "declaration": "内容无需标注",
-  "copyright_claim": false
+  "copyright_claim": false,
+  "watermark": true,
+  "author_marks": []
 }
 ```
 
@@ -341,13 +354,14 @@ For `agent-direct` mode, includes `audio_file` path:
 - `title` (string, ≤80 chars): Human-readable title
 - `intro` (string, ≤2000 chars): Natural language video introduction
 - `tags` (string[], ≤10, each ≤20 chars): Content-specific tags
-- `category` (string): Bilibili top-level (科技/知识/生活/游戏/动画/音乐/舞蹈/鬼畜/时尚/娱乐/影视/纪录片/汽车/运动/动物圈/国创/美食)
-- `sub_category` (string): Bilibili sub-category
+- `category` (string): Bilibili type2 flat category, one of: 影视 | 娱乐 | 音乐 | 舞蹈 | 动画 | 绘画 | 鬼畜 | 游戏 | 资讯 | 知识 | 人工智能 | 科技数码 | 汽车 | 时尚美妆 | 家装房产 | 户外潮流 | 健身 | 体育运动 | 手工 | 美食 | 小剧场 | 旅游出行 | 三农 | 动物 | 亲子 | 健康 | 情感 | vlog | 生活兴趣 | 生活经验
 - `cover_suggestion.primary` (string): Recommended frame filename
 - `cover_suggestion.reason` (string): Why this frame works
 - `cover_suggestion.secondary` (string): Backup frame filename
 - `declaration` (string): One of: `"内容无需标注"` | `"含AI生成内容"` | `"含虚构演绎内容"` | `"内容含营销信息"` | `"个人观点，仅供参考"` | `"内容为转载"`
 - `copyright_claim` (boolean): Whether to check "自制". Default `false`
+- `watermark` (boolean): Whether to enable B站 original watermark. Default `true`
+- `author_marks` (string[]): Optional multi-select author declarations. Each must be one of the 6 standard B站 author marks, or empty array
 
 ---
 

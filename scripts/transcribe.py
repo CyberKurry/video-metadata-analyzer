@@ -292,7 +292,7 @@ def _call_audio_llm_single(audio_path: str, api_key: str, api_base: str, model: 
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| transcript | string | 完整的语音转写文本（中文，保留原始断句，不要省略任何内容）。若无语音则写简短说明。 |
+| transcript | string | 完整的语音转写文本（使用音频的实际语言，保留原始断句，不要省略任何内容）。若无语音则写简短说明。 |
 | speakers | string[] | 说话人识别（如能辨别多说话人则列出，否则为 ["旁白"] 或 ["主讲"]）。若无语音可写空数组。 |
 | key_points | string[] | 从语音中提取的关键信息点（至少 3 条，最多 8 条，每条一个完整短句）。若无语音则描述音频特征（背景音乐/音效/点击/提示声等）。 |
 | tone | string | 语气风格（平稳/激动/正式/随意/幽默等）。若无语音可写 "无语音（纯音效/音乐）" 或空字符串。 |
@@ -481,6 +481,7 @@ def main():
 
     # API 模式直接提取 MP3（省掉 WAV→压缩 二次转码），local/agent-direct 用 WAV
     if args.mode in ("cloud", "audio-llm"):
+        print(f"⚠️  PRIVACY: Audio will be sent to external endpoint ({args.mode} mode)")
         audio_path = os.path.join(tmp_dir, "audio.mp3")
     else:
         audio_path = os.path.join(tmp_dir, "audio.wav")
